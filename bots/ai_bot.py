@@ -1,36 +1,40 @@
-import os
-from typing import List, Any, Optional
-from langchain_google_genai import ChatGoogleGenerativeAI
+from abc import ABC, abstractmethod
+from typing import List, Any
 from langchain_core.tools import BaseTool
 from langchain_core.messages import ToolMessage
 from state import State
 
 
-class GeminiBot:
+class AiBot(ABC):
     """
-    A Gemini-powered bot that accepts tools list and memory for LangGraph integration.
+    Abstract base class for AI bots that can process messages and use tools.
     """
     
     def __init__(self, tools: List[BaseTool] = None):
         """
-        Initialize the Gemini bot with tools and memory.
+        Initialize the AI bot with tools.
         
         Args:
             tools: List of LangChain tools available to the bot
-            memory: Memory component for the bot
         """
         self.tools = tools or []
-        self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            google_api_key=os.getenv("GEMINI_API_KEY"),
-            temperature=0.1
-        )
+        self.llm = self._initialize_llm()
         
         # Bind tools to the LLM if tools are provided
         if self.tools:
             self.llm_with_tools = self.llm.bind_tools(self.tools)
         else:
             self.llm_with_tools = self.llm
+    
+    @abstractmethod
+    def _initialize_llm(self) -> Any:
+        """
+        Initialize the specific LLM implementation.
+        
+        Returns:
+            The initialized LLM instance
+        """
+        pass
     
     def process(self, state: State) -> State:
         """
@@ -67,4 +71,3 @@ class GeminiBot:
             state["messages"].append(final_response)
         
         return state
-

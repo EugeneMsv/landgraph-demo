@@ -2,8 +2,8 @@ from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END, START
 from langchain_core.messages import HumanMessage
 from state import State
-from gemini_bot import GeminiBot
-from example_tools import ALL_TOOLS
+from bots import GeminiBot
+from tools import ALL_TOOLS
 from message_printer import MessagePrinter
 
 load_dotenv()
@@ -27,7 +27,7 @@ def main():
     print("===START Interaction ===")
     result = app.invoke({
         "messages": [HumanMessage(content="Hello! What's the current time in "
-                                          "UTC and in Seattle?")]
+                                          "UTC and in Seattle? Also please calculate time zone shift.")]
     })
     
     MessagePrinter.print_conversation(result["messages"])

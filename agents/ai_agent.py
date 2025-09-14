@@ -1,55 +1,57 @@
 from abc import ABC, abstractmethod
 from typing import List, Any
 from langchain_core.tools import BaseTool
-from langchain_core.messages import ToolMessage
-from state import State
+from langchain_core.messages import BaseMessage, ToolMessage
 
 
 class AiAgent(ABC):
     """
-    Abstract base class for AI agents that can process messages and use tools.
+    Abstract base class for AI agents that process single BaseMessage input/output.
+    Completely decoupled from State - works only with LangChain messages.
     """
-    
+
     def __init__(self, tools: List[BaseTool] = None):
         """
         Initialize the AI agent with tools.
-        
+
         Args:
             tools: List of LangChain tools available to the bot
         """
         self.tools = tools or []
         self.llm = self._initialize_llm()
-        
+
         # Bind tools to the LLM if tools are provided
         if self.tools:
             self.llm_with_tools = self.llm.bind_tools(self.tools)
         else:
             self.llm_with_tools = self.llm
-    
+
     @abstractmethod
     def _initialize_llm(self) -> Any:
         """
         Initialize the specific LLM implementation.
-        
+
         Returns:
             The initialized LLM instance
         """
         pass
-    
-    def process(self, state: State) -> State:
+
+    def process_message(self, message: BaseMessage) -> BaseMessage:
         """
-        Process the current state and return updated state.
-        
+        Process a single message and return the agent's response.
+
         Args:
-            state: Current conversation state
-            
+            message: Single LangChain BaseMessage
+
         Returns:
-            Updated state with agent response
+            Single BaseMessage response from the agent
         """
+        # Create message list for LLM processing
+        messages = [message]
+
         # Get AI response (may contain tool calls)
-        ai_msg = self.llm_with_tools.invoke(state["messages"])
-        state["messages"].append(ai_msg)
-        
+        ai_msg = self.llm_with_tools.invoke(messages)
+
         # If there are tool calls, execute them and get final response
         if hasattr(ai_msg, 'tool_calls') and ai_msg.tool_calls:
             # Execute each tool call
@@ -64,10 +66,9 @@ class AiAgent(ABC):
                         content=str(tool_result),
                         tool_call_id=tool_call["id"]
                     )
-                    state["messages"].append(tool_message)
-            
+                    messages.append(tool_message)
+
             # Get final response after tool execution
-            final_response = self.llm_with_tools.invoke(state["messages"])
-            state["messages"].append(final_response)
-        
-        return state
+            ai_msg = self.llm_with_tools.invoke(messages)
+
+        return ai_msg

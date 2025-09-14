@@ -1,10 +1,9 @@
 import asyncio
 from typing import List, Any
 from langchain_core.tools import BaseTool
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from mcp_use.client import MCPClient
 from .ai_agent import AiAgent
-from state import State
 
 
 class ClaudeMcpAgent(AiAgent):
@@ -49,44 +48,34 @@ class ClaudeMcpAgent(AiAgent):
         except Exception as e:
             print(f"Warning: Could not initialize MCP client: {e}")
 
-    def process(self, state: State) -> State:
+    def process_message(self, message: BaseMessage) -> BaseMessage:
         """
-        Process the current state using Claude via MCP.
+        Process a single message using Claude via MCP.
         Overrides the parent method to use MCP instead of LLM.
 
         Args:
-            state: Current conversation state
+            message: Single LangChain BaseMessage
 
         Returns:
-            Updated state with Claude's response
+            Single BaseMessage response from Claude
         """
         try:
-            # Extract the latest human message
-            human_messages = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)]
+            # Extract content from the message
+            query = message.content if hasattr(message, 'content') else str(message)
 
-            if human_messages:
-                latest_query = human_messages[-1].content
-
-                # Try to call Claude via MCP
-                if self.mcp_client:
-                    # Use asyncio to run the async MCP call
-                    try:
-                        response_content = asyncio.run(self._call_claude_mcp(latest_query))
-                    except Exception as e:
-                        response_content = f"Claude (via MCP): MCP call failed: {str(e)}"
-                else:
-                    response_content = f"Claude (via MCP): Could not initialize MCP client."
+            # Try to call Claude via MCP
+            if self.mcp_client:
+                try:
+                    response_content = asyncio.run(self._call_claude_mcp(query))
+                except Exception as e:
+                    response_content = f"Claude (via MCP): MCP call failed: {str(e)}"
             else:
-                response_content = "Claude (via MCP): Hello! Ready to process messages through MCP protocol."
+                response_content = f"Claude (via MCP): Could not initialize MCP client."
 
-            ai_msg = AIMessage(content=response_content)
-            state["messages"].append(ai_msg)
+            return AIMessage(content=response_content)
 
         except Exception as e:
-            error_msg = AIMessage(content=f"Claude MCP Error: {str(e)}")
-            state["messages"].append(error_msg)
-
-        return state
+            return AIMessage(content=f"Claude MCP Error: {str(e)}")
 
     async def _call_claude_mcp(self, query: str) -> str:
         """
@@ -149,7 +138,6 @@ class ClaudeMcpAgent(AiAgent):
 
         # List all available tools first
         tool_names = [tool.name for tool in tools]
-        print(tool_names)
 
         # Look for a 'Task' tool which seems to be the main agent interface
         task_tool = next((tool for tool in tools if tool.name == 'Task'), None)

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2e09f57] - 2025-09-14
+
+### Changed
+- Refactored AI agents from State-based to message-based processing architecture for improved modularity and testability
+- Implemented multi-node critique workflow with Gemini analysis and Claude critique phases, enabling iterative refinement based on feedback severity
+- Redesigned State structure with dedicated fields (ask, analysis_output, critic_output) and added StatePrinter utility for workflow visualization
+
 ## [4f3ab20] - 2025-09-14
 
 ### Changed

@@ -9,25 +9,26 @@ This is a LangGraph demonstration project that integrates Google's Gemini AI wit
 ## Key Architecture Components
 
 ### Core Components
-- **`AiBot`** (`bots/ai_bot.py`): Abstract base class that defines the common interface for AI bots, containing the generic `process` method for tool execution and state management
-- **`GeminiBot`** (`bots/gemini_bot.py`): Concrete implementation that inherits from `AiBot` and implements Gemini-specific LLM initialization using ChatGoogleGenerativeAI
+- **`AiAgent`** (`agents/ai_agent.py`): Abstract base class that defines the common interface for AI agents, containing the generic `process` method for tool execution and state management
+- **`GeminiBot`** (`agents/gemini_agent.py`): Concrete implementation that inherits from `AiAgent` and implements Gemini-specific LLM initialization using ChatGoogleGenerativeAI
+- **`ClaudeMcpAgent`** (`agents/claude_mcp_agent.py`): MCP protocol implementation for connecting to Claude Code server with account-based authentication
 - **`State`** (`state.py`): TypedDict defining the conversation state structure with message history
 - **`tools/`**: Package containing organized LangChain tools:
   - **`date_time_tool.py`**: Date and time utilities with full timezone support using pytz
   - **`__init__.py`**: Package initialization and tool aggregation
-- **`bots/`**: Package containing AI bot implementations
+- **`agents/`**: Package containing AI agent implementations
 - **`main.py`**: Entry point that demonstrates the LangGraph setup and conversation flow
 - **`message_printer.py`**: Utility class for formatted printing of conversation messages with proper handling of different message types
 
 ### LangGraph Architecture
 The project uses LangGraph's StateGraph pattern:
-1. Single node (`gemini_analysis`) that processes messages through the GeminiBot
+1. Single node (`gemini_analysis`) that processes messages through the selected AI agent
 2. Simple stateless conversation flow without persistent memory
 3. Direct message processing and tool execution within the graph node
 
 ### Tool Integration
 Tools are implemented using LangChain's `@tool` decorator and bound to the LLM using the standard LangChain approach. The architecture handles:
-- **`AiBot`** base class: Contains generic tool execution logic in the `process` method
+- **`AiAgent`** base class: Contains generic tool execution logic in the `process` method
 - **Tool binding**: LLM instances are bound to tools using `bind_tools()` method in the base class constructor
 - **Tool execution**: Automatic tool call detection and execution via `tool_calls` attribute
 - **Tool response integration**: Tool results are added as `ToolMessage` instances with proper `tool_call_id`
@@ -50,7 +51,7 @@ python main.py
 ## Key Implementation Details
 
 ### Tool Execution Flow
-1. User message triggers LLM response via `llm_with_tools.invoke()` in the `AiBot.process()` method
+1. User message triggers LLM response via `llm_with_tools.invoke()` in the `AiAgent.process()` method
 2. If response contains `tool_calls`, each tool is executed by finding it in the tools list
 3. Tool results are added as `ToolMessage` instances with proper `tool_call_id`
 4. Final LLM response is generated after all tool executions complete
@@ -58,10 +59,10 @@ python main.py
 
 ### Architecture Benefits
 The refactored architecture provides:
-- **Extensibility**: Easy to add new AI providers (OpenAI, Claude, etc.) by creating new classes that inherit from `AiBot`
+- **Extensibility**: Easy to add new AI providers (OpenAI, Claude, etc.) by creating new classes that inherit from `AiAgent`
 - **Code Reuse**: Common tool execution logic is shared across all AI provider implementations
 - **Separation of Concerns**: Provider-specific initialization is separated from generic processing logic
-- **Maintainability**: Changes to tool handling only need to be made in one place (`AiBot`)
+- **Maintainability**: Changes to tool handling only need to be made in one place (`AiAgent`)
 
 ### Message Handling
 The `MessagePrinter` class provides formatted output for different message types:
@@ -74,7 +75,7 @@ The `MessagePrinter` class provides formatted output for different message types
 1. Create tool functions using `@tool` decorator in appropriate tool files (e.g., `tools/date_time_tool.py`)
 2. Add to the specific tool category list (e.g., `ALL_DATE_TIME_TOOLS`)
 3. Update `tools/__init__.py` to include in `ALL_TOOLS` aggregation
-4. Tools are automatically bound to the bot instance via `bind_tools()` in the `AiBot` constructor
+4. Tools are automatically bound to the agent instance via `bind_tools()` in the `AiAgent` constructor
 5. No additional configuration needed - tools are discovered by name during execution
 
 ### Tool Organization
@@ -85,10 +86,10 @@ The tools are organized by category:
 
 ### Adding New AI Providers
 To add support for a new AI provider (e.g., OpenAI, Claude):
-1. Create a new class that inherits from `AiBot` (e.g., `OpenAIBot`, `ClaudeBot`)
+1. Create a new class that inherits from `AiAgent` (e.g., `OpenAIAgent`, `ClaudeAgent`)
 2. Implement the abstract `_initialize_llm()` method with provider-specific configuration
 3. The `process()` method and tool handling is inherited automatically
-4. Update `main.py` to use the new bot implementation
+4. Update `main.py` to use the new agent implementation
 
 ### State Management
 The `State` TypedDict contains a `messages` list that accumulates the entire conversation history including:

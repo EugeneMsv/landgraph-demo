@@ -5,14 +5,14 @@ from langchain_core.messages import ToolMessage
 from state import State
 
 
-class AiBot(ABC):
+class AiAgent(ABC):
     """
-    Abstract base class for AI bots that can process messages and use tools.
+    Abstract base class for AI agents that can process messages and use tools.
     """
     
     def __init__(self, tools: List[BaseTool] = None):
         """
-        Initialize the AI bot with tools.
+        Initialize the AI agent with tools.
         
         Args:
             tools: List of LangChain tools available to the bot
@@ -44,7 +44,7 @@ class AiBot(ABC):
             state: Current conversation state
             
         Returns:
-            Updated state with bot response
+            Updated state with agent response
         """
         # Get AI response (may contain tool calls)
         ai_msg = self.llm_with_tools.invoke(state["messages"])

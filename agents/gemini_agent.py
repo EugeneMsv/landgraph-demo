@@ -2,10 +2,10 @@ import os
 from typing import List, Any, Optional
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.tools import BaseTool
-from .ai_bot import AiBot
+from .ai_agent import AiAgent
 
 
-class GeminiBot(AiBot):
+class GeminiAgent(AiAgent):
     """
     A Gemini-powered bot that accepts tools list and memory for LangGraph integration.
     """

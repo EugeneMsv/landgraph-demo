@@ -1,4 +1,5 @@
 import asyncio
+import json
 from typing import List, Any
 from langchain_core.tools import BaseTool
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
@@ -91,7 +92,10 @@ class ClaudeMcpAgent(AiAgent):
 
             # Execute the Task tool and get response
             response_text = await self._execute_task_tool(session, query)
-            return f"Claude (via MCP): {response_text}"
+
+            # Extract readable content from JSON response
+            readable_content = self._extract_readable_content(response_text)
+            return f"Claude (via MCP): {readable_content}"
 
         except Exception as e:
             return f"Claude (via MCP): Error - {str(e)}"
@@ -162,6 +166,35 @@ class ClaudeMcpAgent(AiAgent):
         else:
             # Just show available tools for debugging
             return f"Connected successfully! Available tools: {', '.join(tool_names)}"
+
+    def _extract_readable_content(self, response_text: str) -> str:
+        """
+        Extract readable content from Claude's JSON response.
+
+        Args:
+            response_text: Raw response text from Claude (may contain JSON)
+
+        Returns:
+            Extracted readable text content, or original response if parsing fails
+        """
+        try:
+            # Try to parse as JSON
+            parsed_response = json.loads(response_text)
+
+            # Look for content array with text property
+            if isinstance(parsed_response, dict) and "content" in parsed_response:
+                content = parsed_response["content"]
+                if isinstance(content, list) and len(content) > 0:
+                    first_content = content[0]
+                    if isinstance(first_content, dict) and "text" in first_content:
+                        return first_content["text"]
+
+            # If we can't extract text, return original response
+            return response_text
+
+        except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+            # If JSON parsing fails, return original response
+            return response_text
 
     def cleanup(self):
         """Clean up MCP resources."""

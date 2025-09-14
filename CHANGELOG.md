@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [dc4239d] - 2025-09-14
+
+### Added
+- **Iteration Limiting**: Implemented configurable maximum iterations (default: 3) to prevent infinite critique loops
+- **Immutable Configuration**: Added `Configuration` dataclass with `@dataclass(frozen=True)` for workflow settings
+- **Iteration Tracking**: Added `current_iterations` counter in state management with progress visualization (X/Y format)
+- **JSON Response Parsing**: Enhanced `ClaudeMcpAgent` with `_extract_readable_content()` method to parse Claude's JSON responses
+
+### Changed
+- **Enhanced State Management**: Updated `State` TypedDict to include `configuration` and `current_iterations` fields
+- **Improved Workflow Control**: Modified `should_continue_analysis()` to check both critique severity AND iteration limits
+- **Better User Experience**: `StatePrinter` now displays iteration progress and Claude responses are clean/readable instead of raw JSON
+- **Graceful Error Handling**: Added fallback to original response if JSON parsing fails in Claude MCP agent
+
+### Fixed
+- **Infinite Loop Prevention**: Workflow now automatically terminates after maximum iterations even if issues persist
+- **Clean Output**: Users no longer see raw JSON metadata from Claude responses, only readable content
+
 ## [2e09f57] - 2025-09-14
 
 ### Changed

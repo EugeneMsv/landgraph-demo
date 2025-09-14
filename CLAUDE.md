@@ -11,8 +11,9 @@ This is a LangGraph demonstration project that integrates Google's Gemini AI wit
 ### Core Components
 - **`AiAgent`** (`agents/ai_agent.py`): Abstract base class that defines the common interface for AI agents, containing the generic `process_message` method for single message processing and tool execution
 - **`GeminiAgent`** (`agents/gemini_agent.py`): Concrete implementation that inherits from `AiAgent` and implements Gemini-specific LLM initialization using ChatGoogleGenerativeAI
-- **`ClaudeMcpAgent`** (`agents/claude_mcp_agent.py`): MCP protocol implementation for connecting to Claude Code server with account-based authentication, overrides `process_message` for MCP communication
-- **`State`** (`state.py`): TypedDict defining the workflow state structure with ask, analysis_output, critic_output fields and `StatePrinter` utility
+- **`ClaudeMcpAgent`** (`agents/claude_mcp_agent.py`): MCP protocol implementation for connecting to Claude Code server with account-based authentication, overrides `process_message` for MCP communication and includes JSON response parsing for clean output
+- **`State`** (`state.py`): TypedDict defining the workflow state structure with ask, analysis_output, critic_output, configuration, and current_iterations fields, plus `StatePrinter` utility
+- **`Configuration`** (`state.py`): Immutable dataclass containing workflow settings like max_iterations (default: 3)
 - **`tools/`**: Package containing organized LangChain tools:
   - **`date_time_tool.py`**: Date and time utilities with full timezone support using pytz
   - **`__init__.py`**: Package initialization and tool aggregation
@@ -25,8 +26,9 @@ The project uses LangGraph's StateGraph pattern with a multi-node critique workf
 1. **Gemini Analysis Node** (`gemini_analysis`): Processes user queries and generates analysis using GeminiAgent
 2. **Claude Critique Node** (`claude_critic`): Reviews analysis using ClaudeMcpAgent and provides structured feedback
 3. **Conditional Edges**: Routes flow based on critique severity - continues analysis if critical/major issues found
-4. **Iterative Refinement**: Allows re-analysis with critique context for improved results
-5. **State-based Communication**: Nodes communicate via shared State object with structured fields
+4. **Iterative Refinement**: Allows re-analysis with critique context for improved results, with configurable iteration limits
+5. **Iteration Control**: Prevents infinite loops via `Configuration.max_iterations` setting (default: 3)
+6. **State-based Communication**: Nodes communicate via shared State object with structured fields
 
 ### Tool Integration
 Tools are implemented using LangChain's `@tool` decorator and bound to the LLM using the standard LangChain approach. The architecture handles:
@@ -102,12 +104,28 @@ The `State` TypedDict contains structured fields for workflow coordination:
 - **`node_instruction`**: Current instruction written by each node for processing context
 - **`analysis_output`**: Gemini's analysis result from the analysis node
 - **`critic_output`**: Claude's critique response with structured feedback (raw_response format)
-- **`StatePrinter`**: Utility class for formatted state visualization across workflow steps
+- **`configuration`**: Immutable `Configuration` object containing workflow settings (max_iterations, etc.)
+- **`current_iterations`**: Counter tracking critique iterations to prevent infinite loops
+- **`StatePrinter`**: Utility class for formatted state visualization with iteration progress (X/Y format)
 
 ### Workflow Execution
 The critique workflow follows this pattern:
 1. **Initial Analysis**: Gemini processes the user's `ask` and generates `analysis_output`
-2. **Critique Phase**: Claude reviews the analysis and provides `critic_output`
-3. **Conditional Routing**: If critical/major issues found, route back to analysis with critique context
-4. **Iterative Refinement**: Continue until satisfactory analysis achieved
-5. **State Visualization**: `StatePrinter` provides formatted output at each step
+2. **Critique Phase**: Claude reviews the analysis and provides `critic_output`, incrementing `current_iterations`
+3. **Iteration Check**: `should_continue_analysis()` validates `current_iterations <= max_iterations`
+4. **Conditional Routing**: If critical/major issues found AND under iteration limit, route back to analysis with critique context
+5. **Iterative Refinement**: Continue until satisfactory analysis achieved OR maximum iterations reached
+6. **State Visualization**: `StatePrinter` provides formatted output with iteration progress at each step
+
+### Claude MCP Agent Enhancements
+The `ClaudeMcpAgent` includes several improvements:
+- **JSON Response Parsing**: `_extract_readable_content()` method parses Claude's JSON responses to extract clean, readable text from the nested `content[0].text` structure
+- **Graceful Error Handling**: Falls back to original response if JSON parsing fails
+- **Clean Output**: Users see readable critique messages instead of raw JSON metadata
+
+### Configuration Management
+The `Configuration` dataclass provides immutable workflow settings:
+- **Immutable Design**: Uses `@dataclass(frozen=True)` to prevent runtime modifications
+- **Default Values**: `max_iterations=3` provides sensible defaults
+- **Extensible**: Easy to add new configuration options (timeouts, retry counts, etc.)
+- **Type Safety**: TypedDict integration ensures configuration is always present in state

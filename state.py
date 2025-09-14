@@ -1,10 +1,18 @@
 from typing import TypedDict, Optional, Dict
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Configuration:
+    """Immutable configuration settings for the workflow."""
+    max_iterations: int = 3
 
 class State(TypedDict):
     ask: Optional[str]                    # User's original input/question
     node_instruction: Optional[str]       # Current instruction written by each node
     analysis_output: Optional[str]        # Gemini's analysis result
     critic_output: Optional[Dict]         # Claude's critique: {"critical": [], "major": [], "minor": []}
+    configuration: Configuration          # Immutable configuration settings
+    current_iterations: int               # Current iteration count
 
 class StatePrinter:
     """Utility class for pretty printing state."""
@@ -16,7 +24,13 @@ class StatePrinter:
         print(f"📊 State:")
         print(f"{'='*60}")
 
-        print(f"❓ ASK: {state.get('ask', 'None')}")
+        # Show iteration progress
+        current_iter = state.get('current_iterations', 0)
+        config = state.get('configuration')
+        max_iter = config.max_iterations if config else 3
+        print(f"🔄 Iteration: {current_iter}/{max_iter}")
+
+        print(f"\n❓ ASK: {state.get('ask', 'None')}")
 
         print(f"\n🎯 NODE INSTRUCTION:")
         instruction = state.get('node_instruction', 'None')

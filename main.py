@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END, START
 from langchain_core.messages import HumanMessage
-from state import State, StatePrinter
+from state import State, StatePrinter, Configuration
 from agents import GeminiAgent, ClaudeMcpAgent
 from tools import ALL_TOOLS
 from message_printer import MessagePrinter
@@ -31,12 +31,16 @@ def gemini_agent_node(state: State) -> State:
 
     # Extract analysis output from response
     state["analysis_output"] = response_message.content
+    state["critic_output"] = None
     StatePrinter.print_state(state)
     return state
 
 def claude_agent_node(state: State) -> State:
+    # Increment iteration counter
+    state["current_iterations"] = state.get("current_iterations", 0) + 1
+
     # Create instruction for Claude
-    instruction = f"Critique this analysis and return JSON with critical, major, minor issues: {state['analysis_output']}"
+    instruction = f"Critique this analysis and return JSON with critical, major, minor issues, make it very concise: {state['analysis_output']}"
 
     # Store instruction in state
     state["node_instruction"] = instruction
@@ -51,15 +55,23 @@ def claude_agent_node(state: State) -> State:
     return state
 
 def should_continue_analysis(state: State) -> str:
-    """Determine if analysis should continue based on critique."""
-    # For now, just check if critic_output exists and has content
-    # Later we'll parse JSON and check for critical/major issues
+    """Determine if analysis should continue based on critique and iteration limits."""
+    current_iterations = state.get("current_iterations", 0)
+    config = state.get("configuration")
+    max_iterations = config.max_iterations if config else 3
+
+    # Check if we've reached the maximum iterations
+    if current_iterations > max_iterations:
+        print(f"Maximum iterations ({max_iterations}) reached, finishing...")
+        return "END"
+
+    # Check if critic_output exists and has content
     critic_output = state.get("critic_output", {})
     raw_response = critic_output.get("raw_response", "")
 
     # Simple check - if critique mentions "critical" or "major" issues, continue
     if "critical" in raw_response.lower() or "major" in raw_response.lower():
-        print("Found critical or major issues, continuing analysis...")
+        print(f"Found critical or major issues, continuing analysis... (iteration {current_iterations}/{max_iterations})")
         return "gemini_analysis"
     else:
         print("No critical or major issues found, finishing...")
@@ -91,7 +103,9 @@ def main():
         "ask": "Are social networks good? Let's try to understand the benefits.",
         "node_instruction": None,
         "analysis_output": None,
-        "critic_output": None
+        "critic_output": None,
+        "configuration": Configuration(max_iterations=3),
+        "current_iterations": 0
     }
 
     result = app.invoke(initial_state)

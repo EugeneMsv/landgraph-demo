@@ -108,7 +108,7 @@ The `State` TypedDict contains structured fields for workflow coordination:
 - **`critic_output`**: Claude's critique response with structured feedback (raw_response format)
 - **`configuration`**: Immutable `Configuration` object containing workflow settings (max_iterations, etc.)
 - **`current_iterations`**: Counter tracking critique iterations to prevent infinite loops
-- **`StatePrinter`**: Utility class for formatted state visualization with iteration progress (X/Y format)
+- **`StatePrinter`**: Utility class with targeted printing methods (`print_ask_only()`, `print_analysis_only()`, `print_critic_only()`) that show node-specific outputs with iteration progress (X/Y format)
 
 ### Workflow Execution
 The critique workflow follows this pattern:
@@ -117,7 +117,7 @@ The critique workflow follows this pattern:
 3. **Iteration Check**: `should_continue_analysis()` validates `current_iterations <= max_iterations`
 4. **Conditional Routing**: If critical/major issues found AND under iteration limit, route back to analysis with critique context
 5. **Iterative Refinement**: Continue until satisfactory analysis achieved OR maximum iterations reached
-6. **State Visualization**: `StatePrinter` provides formatted output with iteration progress at each step
+6. **State Visualization**: `StatePrinter` uses targeted printing methods - `print_ask_only()` at start, `print_analysis_only()` after Gemini node, `print_critic_only()` after Claude node, each with iteration progress tracking
 
 ### Claude MCP Agent Enhancements
 The `ClaudeMcpAgent` includes several performance and reliability improvements:

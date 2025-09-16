@@ -18,6 +18,53 @@ class StatePrinter:
     """Utility class for pretty printing state."""
 
     @staticmethod
+    def _get_iteration_display(state: State) -> str:
+        """Helper method to get formatted iteration display."""
+        current_iter = state.get('current_iterations', 0)
+        config = state.get('configuration')
+        max_iter = config.max_iterations if config else 3
+        return f"🔄 Iteration: {current_iter}/{max_iter}"
+
+    @staticmethod
+    def print_ask_only(state: State):
+        """Print only the ask question."""
+        print(f"\n{'='*60}")
+        print(f"❓ QUESTION:")
+        print(f"{StatePrinter._get_iteration_display(state)}")
+        print(f"{'='*60}")
+        print(f"{state.get('ask', 'None')}")
+        print(f"{'='*60}\n")
+
+    @staticmethod
+    def print_analysis_only(state: State):
+        """Print only the analysis output."""
+        print(f"\n{'='*60}")
+        print(f"🤖 ANALYSIS:")
+        print(f"{StatePrinter._get_iteration_display(state)}")
+        print(f"{'='*60}")
+        analysis = state.get('analysis_output', 'None')
+        print(f"{analysis}")
+        print(f"{'='*60}\n")
+
+    @staticmethod
+    def print_critic_only(state: State):
+        """Print only the critic output."""
+        print(f"\n{'='*60}")
+        print(f"🔍 CRITIQUE:")
+        print(f"{StatePrinter._get_iteration_display(state)}")
+        print(f"{'='*60}")
+        critic = state.get('critic_output', {})
+        if critic:
+            if isinstance(critic, dict):
+                raw_response = critic.get('raw_response', '')
+                print(f"{raw_response}")
+            else:
+                print(f"{critic}")
+        else:
+            print("None")
+        print(f"{'='*60}\n")
+
+    @staticmethod
     def print_state(state: State):
         """Pretty print the current state."""
         print(f"\n{'='*60}")

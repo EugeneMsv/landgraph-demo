@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [8d2c933] - 2025-09-15
+
+### Added
+- **Targeted State Printing**: Added `print_ask_only()`, `print_analysis_only()`, and `print_critic_only()` methods to `StatePrinter` for node-specific output display
+- **Iteration Tracking**: All state printing methods now include iteration counter (X/Y format) for workflow progress visibility
+
+### Changed
+- **Workflow Output**: Nodes now use targeted printing instead of full state dumps - question shown once at start, analysis from Gemini node, critique from Claude node
+- **Cleaner Interface**: Removed verbose final state printing, keeping simple completion message
+- **Enhanced User Experience**: Each workflow step shows relevant output with consistent iteration progress tracking
+
 ## [279684e] - 2025-09-15
 
 ### Added

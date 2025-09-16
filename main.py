@@ -32,7 +32,7 @@ def gemini_agent_node(state: State) -> State:
     # Extract analysis output from response
     state["analysis_output"] = response_message.content
     state["critic_output"] = None
-    StatePrinter.print_state(state)
+    StatePrinter.print_analysis_only(state)
     return state
 
 def claude_agent_node(state: State) -> State:
@@ -51,7 +51,7 @@ def claude_agent_node(state: State) -> State:
 
     # For now, store the raw response - we'll add parsing later
     state["critic_output"] = {"raw_response": response_message.content}
-    StatePrinter.print_state(state)
+    StatePrinter.print_critic_only(state)
     return state
 
 def should_continue_analysis(state: State) -> str:
@@ -108,10 +108,12 @@ def main():
         "current_iterations": 0
     }
 
+    # Print the question at the beginning
+    StatePrinter.print_ask_only(initial_state)
+
     result = app.invoke(initial_state)
 
     print(f"\n🎉 WORKFLOW COMPLETED! 🎉")
-    StatePrinter.print_state(result)
 
     print("===END Interaction ===")
 

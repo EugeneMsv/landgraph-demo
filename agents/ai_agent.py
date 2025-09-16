@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Any
+import time
 from langchain_core.tools import BaseTool
 from langchain_core.messages import BaseMessage, ToolMessage
 
@@ -26,19 +27,10 @@ class AiAgent(ABC):
         else:
             self.llm_with_tools = self.llm
 
-    @abstractmethod
-    def _initialize_llm(self) -> Any:
+    def _process_message_internal(self, message: BaseMessage) -> BaseMessage:
         """
-        Initialize the specific LLM implementation.
-
-        Returns:
-            The initialized LLM instance
-        """
-        pass
-
-    def process_message(self, message: BaseMessage) -> BaseMessage:
-        """
-        Process a single message and return the agent's response.
+        Default internal message processing logic for LLM-based agents.
+        Can be overridden by subclasses for custom processing.
 
         Args:
             message: Single LangChain BaseMessage
@@ -72,3 +64,30 @@ class AiAgent(ABC):
             ai_msg = self.llm_with_tools.invoke(messages)
 
         return ai_msg
+
+    @abstractmethod
+    def _initialize_llm(self) -> Any:
+        """
+        Initialize the specific LLM implementation.
+
+        Returns:
+            The initialized LLM instance
+        """
+        pass
+
+    def process_message(self, message: BaseMessage) -> BaseMessage:
+        """
+        Process a single message and return the agent's response with timing measurement.
+
+        Args:
+            message: Single LangChain BaseMessage
+
+        Returns:
+            Single BaseMessage response from the agent
+        """
+        start_time = time.perf_counter()
+        result = self._process_message_internal(message)
+        end_time = time.perf_counter()
+        print(f"⏱️  {self.__class__.__name__} processing time: {end_time - start_time:.2f}s")
+        return result
+

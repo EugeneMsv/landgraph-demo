@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [279684e] - 2025-09-15
+
+### Added
+- **Performance Timing**: Implemented automatic processing time measurement for all agents with formatted output (`⏱️ {AgentName} processing time: {time}s`)
+- **MCP Session Caching**: Added session and tool caching during `ClaudeMcpAgent` initialization to reduce connection overhead
+- **Resource Management**: Implemented proper cleanup methods with destructor pattern for MCP resource management
+- **Processing Architecture**: Introduced `_process_message_internal()` method for customizable agent processing logic
+
+### Changed
+- **Refactored AiAgent**: Split `process_message()` into timing wrapper and `_process_message_internal()` for better separation of concerns
+- **Optimized ClaudeMcpAgent**: Session creation and tool discovery now happen once during initialization instead of per-request
+- **Enhanced Resource Cleanup**: Added explicit cleanup calls in `main.py` and destructor methods for proper resource management
+- **Improved Performance**: Significantly reduced MCP connection overhead through session caching
+
+### Fixed
+- **Resource Leaks**: Proper cleanup of MCP sessions and connections through destructors and explicit cleanup calls
+- **Connection Overhead**: Eliminated repeated session creation and tool discovery through intelligent caching
+
 ## [dc4239d] - 2025-09-14
 
 ### Added

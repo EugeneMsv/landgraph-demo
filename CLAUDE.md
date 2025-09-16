@@ -9,9 +9,9 @@ This is a LangGraph demonstration project that integrates Google's Gemini AI wit
 ## Key Architecture Components
 
 ### Core Components
-- **`AiAgent`** (`agents/ai_agent.py`): Abstract base class that defines the common interface for AI agents, containing the generic `process_message` method for single message processing and tool execution
+- **`AiAgent`** (`agents/ai_agent.py`): Abstract base class that defines the common interface for AI agents, containing the generic `process_message` method with performance timing and `_process_message_internal` for customizable processing logic
 - **`GeminiAgent`** (`agents/gemini_agent.py`): Concrete implementation that inherits from `AiAgent` and implements Gemini-specific LLM initialization using ChatGoogleGenerativeAI
-- **`ClaudeMcpAgent`** (`agents/claude_mcp_agent.py`): MCP protocol implementation for connecting to Claude Code server with account-based authentication, overrides `process_message` for MCP communication and includes JSON response parsing for clean output
+- **`ClaudeMcpAgent`** (`agents/claude_mcp_agent.py`): MCP protocol implementation for connecting to Claude Code server with account-based authentication, overrides `_process_message_internal` for MCP communication, includes JSON response parsing for clean output, and features optimized session/tool caching with proper resource cleanup
 - **`State`** (`state.py`): TypedDict defining the workflow state structure with ask, analysis_output, critic_output, configuration, and current_iterations fields, plus `StatePrinter` utility
 - **`Configuration`** (`state.py`): Immutable dataclass containing workflow settings like max_iterations (default: 3)
 - **`tools/`**: Package containing organized LangChain tools:
@@ -32,7 +32,7 @@ The project uses LangGraph's StateGraph pattern with a multi-node critique workf
 
 ### Tool Integration
 Tools are implemented using LangChain's `@tool` decorator and bound to the LLM using the standard LangChain approach. The architecture handles:
-- **`AiAgent`** base class: Contains generic tool execution logic in the `process_message` method
+- **`AiAgent`** base class: Contains generic tool execution logic in the `_process_message_internal` method with performance timing wrapper in `process_message`
 - **Tool binding**: LLM instances are bound to tools using `bind_tools()` method in the base class constructor
 - **Tool execution**: Automatic tool call detection and execution via `tool_calls` attribute
 - **Tool response integration**: Tool results are added as `ToolMessage` instances with proper `tool_call_id`
@@ -55,11 +55,13 @@ python main.py
 ## Key Implementation Details
 
 ### Message Processing Flow
-1. Single BaseMessage is processed via `process_message()` method in `AiAgent` implementations
-2. Message triggers LLM response via `llm_with_tools.invoke()` with message array
-3. If response contains `tool_calls`, each tool is executed by finding it in the tools list
-4. Tool results are added as `ToolMessage` instances with proper `tool_call_id` to message array
-5. Final LLM response is generated after all tool executions complete and returned as BaseMessage
+1. Single BaseMessage is processed via `process_message()` method which includes performance timing measurement
+2. Internal processing delegated to `_process_message_internal()` method for customizable agent behavior
+3. For LLM-based agents: Message triggers LLM response via `llm_with_tools.invoke()` with message array
+4. If response contains `tool_calls`, each tool is executed by finding it in the tools list
+5. Tool results are added as `ToolMessage` instances with proper `tool_call_id` to message array
+6. Final LLM response is generated after all tool executions complete and returned as BaseMessage
+7. Processing time is logged with agent class name for performance monitoring
 
 ### Architecture Benefits
 The refactored architecture provides:
@@ -94,7 +96,7 @@ The tools are organized by category:
 To add support for a new AI provider (e.g., OpenAI, Claude):
 1. Create a new class that inherits from `AiAgent` (e.g., `OpenAIAgent`, `ClaudeAgent`)
 2. Implement the abstract `_initialize_llm()` method with provider-specific configuration
-3. Optionally override `process_message()` for custom processing (like `ClaudeMcpAgent` does for MCP)
+3. Optionally override `_process_message_internal()` for custom processing (like `ClaudeMcpAgent` does for MCP) while keeping timing measurement
 4. The base `process_message()` method and tool handling is inherited automatically
 5. Update workflow nodes in `main.py` to use the new agent implementation
 
@@ -118,9 +120,12 @@ The critique workflow follows this pattern:
 6. **State Visualization**: `StatePrinter` provides formatted output with iteration progress at each step
 
 ### Claude MCP Agent Enhancements
-The `ClaudeMcpAgent` includes several improvements:
+The `ClaudeMcpAgent` includes several performance and reliability improvements:
+- **Session Caching**: MCP session and tools are cached during initialization to reduce connection overhead
+- **Optimized Initialization**: Session creation and tool discovery happen once during construction via `_initialize_session_and_tools()`
 - **JSON Response Parsing**: `_extract_readable_content()` method parses Claude's JSON responses to extract clean, readable text from the nested `content[0].text` structure
 - **Graceful Error Handling**: Falls back to original response if JSON parsing fails
+- **Resource Management**: Proper cleanup methods with destructor ensure MCP resources are released
 - **Clean Output**: Users see readable critique messages instead of raw JSON metadata
 
 ### Configuration Management
@@ -129,3 +134,11 @@ The `Configuration` dataclass provides immutable workflow settings:
 - **Default Values**: `max_iterations=3` provides sensible defaults
 - **Extensible**: Easy to add new configuration options (timeouts, retry counts, etc.)
 - **Type Safety**: TypedDict integration ensures configuration is always present in state
+
+### Performance Monitoring and Resource Management
+The architecture includes built-in performance monitoring and resource management:
+- **Processing Time Measurement**: All agent processing includes automatic timing measurement logged with agent class name
+- **MCP Session Optimization**: `ClaudeMcpAgent` caches sessions and tools during initialization to minimize connection overhead
+- **Resource Cleanup**: Proper cleanup methods and destructors ensure MCP connections are properly closed
+- **Memory Management**: Explicit cleanup calls in `main.py` ensure resources are released when agents are no longer needed
+- **Performance Visibility**: Processing times are displayed in format: `⏱️ {AgentName} processing time: {time}s`

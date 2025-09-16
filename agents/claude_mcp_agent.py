@@ -21,9 +21,14 @@ class ClaudeMcpAgent(AiAgent):
             tools: List of LangChain tools available to the agent (ignored)
         """
         self.mcp_client = None
+        self.session = None
+        self.cached_tools = None
+        self.task_tool = None
         # Skip the parent __init__ to avoid LLM initialization
         # Ignore tools parameter - we don't use them for MCP communication
         self._initialize_mcp_client()
+        # Create session and cache tools during initialization
+        asyncio.run(self._initialize_session_and_tools())
 
     def _initialize_llm(self) -> Any:
         """
@@ -49,7 +54,28 @@ class ClaudeMcpAgent(AiAgent):
         except Exception as e:
             print(f"Warning: Could not initialize MCP client: {e}")
 
-    def process_message(self, message: BaseMessage) -> BaseMessage:
+    async def _initialize_session_and_tools(self):
+        """Initialize session and cache tools during construction."""
+        try:
+            if self.mcp_client:
+                # Create session once
+                await self.mcp_client.create_all_sessions()
+                sessions = self.mcp_client.sessions
+                if sessions:
+                    session_name = list(sessions.keys())[0]
+                    self.session = self.mcp_client.get_session(session_name)
+
+                    # Cache tools once
+                    self.cached_tools = await self.session.list_tools()
+                    self.task_tool = next((tool for tool in self.cached_tools if tool.name == 'Task'), None)
+
+                    print(f"MCP session initialized with {len(self.cached_tools)} tools")
+                else:
+                    print("Warning: No MCP sessions available")
+        except Exception as e:
+            print(f"Warning: Could not initialize MCP session and tools: {e}")
+
+    def _process_message_internal(self, message: BaseMessage) -> BaseMessage:
         """
         Process a single message using Claude via MCP.
         Overrides the parent method to use MCP instead of LLM.
@@ -83,15 +109,12 @@ class ClaudeMcpAgent(AiAgent):
         Call Claude through MCP protocol.
         Sends a query to Claude via the MCP client and returns the response.
         """
-        if not self.mcp_client:
-            raise RuntimeError("MCP client not initialized")
+        if not self.session:
+            raise RuntimeError("MCP session not initialized")
 
         try:
-            # Create session with Claude Code server
-            session = await self._create_session()
-
-            # Execute the Task tool and get response
-            response_text = await self._execute_task_tool(session, query)
+            # Execute the Task tool using cached session and tools
+            response_text = await self._execute_task_tool(query)
 
             # Extract readable content from JSON response
             readable_content = self._extract_readable_content(response_text)
@@ -100,55 +123,20 @@ class ClaudeMcpAgent(AiAgent):
         except Exception as e:
             return f"Claude (via MCP): Error - {str(e)}"
 
-        finally:
-            # Clean up sessions
-            try:
-                await self.mcp_client.close_all_sessions()
-            except:
-                pass
 
-    async def _create_session(self):
-        """
-        Create and return the first available MCP session.
-
-        Returns:
-            The MCP session object for communication with Claude Code server
-
-        Raises:
-            RuntimeError: If no sessions are available after creation
-        """
-        await self.mcp_client.create_all_sessions()
-
-        sessions = self.mcp_client.sessions
-        if not sessions:
-            raise RuntimeError("No MCP sessions available")
-
-        session_name = list(sessions.keys())[0]
-        return self.mcp_client.get_session(session_name)
-
-    async def _execute_task_tool(self, session, query: str) -> str:
+    async def _execute_task_tool(self, query: str) -> str:
         """
         Execute the Task tool with the given query and return response text.
 
         Args:
-            session: MCP session to use for tool execution
             query: User query to process
 
         Returns:
             Response text from the Task tool execution
         """
-        # List available tools from Claude Code
-        tools = await session.list_tools()
-
-        # List all available tools first
-        tool_names = [tool.name for tool in tools]
-
-        # Look for a 'Task' tool which seems to be the main agent interface
-        task_tool = next((tool for tool in tools if tool.name == 'Task'), None)
-
-        if task_tool:
-            # Use the Task tool with general-purpose agent to handle our query
-            result = await session.call_tool(
+        if self.task_tool:
+            # Use the cached Task tool with general-purpose agent to handle our query
+            result = await self.session.call_tool(
                 name="Task",
                 arguments={
                     "description": "Answer user question",
@@ -164,8 +152,9 @@ class ClaudeMcpAgent(AiAgent):
             else:
                 return "Task tool executed but returned no content"
         else:
-            # Just show available tools for debugging
-            return f"Connected successfully! Available tools: {', '.join(tool_names)}"
+            # Show available tools for debugging if Task tool not found
+            tool_names = [tool.name for tool in self.cached_tools] if self.cached_tools else []
+            return f"Task tool not available. Available tools: {', '.join(tool_names)}"
 
     def _extract_readable_content(self, response_text: str) -> str:
         """
@@ -199,6 +188,18 @@ class ClaudeMcpAgent(AiAgent):
     def cleanup(self):
         """Clean up MCP resources."""
         if self.mcp_client:
-            # Note: cleanup would be async in real implementation
-            # await self.mcp_client.close_all_sessions()
+            try:
+                # Close the session properly
+                asyncio.run(self.mcp_client.close_all_sessions())
+                self.session = None
+                self.cached_tools = None
+                self.task_tool = None
+            except Exception as e:
+                print(f"Warning: Error during MCP cleanup: {e}")
+
+    def __del__(self):
+        """Destructor to ensure cleanup when object is destroyed."""
+        try:
+            self.cleanup()
+        except:
             pass

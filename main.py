@@ -115,5 +115,9 @@ def main():
 
     print("===END Interaction ===")
 
+    # Call destructors
+    del gemini_agent
+    del claude_agent
+
 if __name__ == "__main__":
     main()

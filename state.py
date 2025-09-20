@@ -29,8 +29,8 @@ class StatePrinter:
     def print_ask_only(state: State):
         """Print only the ask question."""
         print(f"\n{'='*60}")
-        print(f"❓ QUESTION:")
         print(f"{StatePrinter._get_iteration_display(state)}")
+        print(f"❓ QUESTION:")
         print(f"{'='*60}")
         print(f"{state.get('ask', 'None')}")
         print(f"{'='*60}\n")
@@ -39,8 +39,8 @@ class StatePrinter:
     def print_analysis_only(state: State):
         """Print only the analysis output."""
         print(f"\n{'='*60}")
-        print(f"🤖 ANALYSIS:")
         print(f"{StatePrinter._get_iteration_display(state)}")
+        print(f"🤖 ANALYSIS:")
         print(f"{'='*60}")
         analysis = state.get('analysis_output', 'None')
         print(f"{analysis}")
@@ -50,8 +50,8 @@ class StatePrinter:
     def print_critic_only(state: State):
         """Print only the critic output."""
         print(f"\n{'='*60}")
-        print(f"🔍 CRITIQUE:")
         print(f"{StatePrinter._get_iteration_display(state)}")
+        print(f"🔍 CRITIQUE:")
         print(f"{'='*60}")
         critic = state.get('critic_output', {})
         if critic:

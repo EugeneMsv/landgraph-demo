@@ -9,8 +9,8 @@ from message_printer import MessagePrinter
 load_dotenv()
 
 # Initialize Gemini bot instance with tools and memory
-gemini_agent = GeminiAgent(tools=ALL_TOOLS)
-claude_agent = ClaudeMcpAgent(tools=ALL_TOOLS)
+gemini_agent = GeminiAgent()
+claude_agent = ClaudeMcpAgent()
 
 def gemini_agent_node(state: State) -> State:
     # Check if this is a loop-back (critique exists)
@@ -36,9 +36,6 @@ def gemini_agent_node(state: State) -> State:
     return state
 
 def claude_agent_node(state: State) -> State:
-    # Increment iteration counter
-    state["current_iterations"] = state.get("current_iterations", 0) + 1
-
     # Create instruction for Claude
     instruction = f"Critique this analysis and return JSON with critical, major, minor issues, make it very concise: {state['analysis_output']}"
 
@@ -51,12 +48,14 @@ def claude_agent_node(state: State) -> State:
 
     # For now, store the raw response - we'll add parsing later
     state["critic_output"] = {"raw_response": response_message.content}
+    # Increment iteration counter
+    state["current_iterations"] = state.get("current_iterations", 0) + 1
     StatePrinter.print_critic_only(state)
     return state
 
 def should_continue_analysis(state: State) -> str:
     """Determine if analysis should continue based on critique and iteration limits."""
-    current_iterations = state.get("current_iterations", 0)
+    current_iterations = state.get("current_iterations", 1)
     config = state.get("configuration")
     max_iterations = config.max_iterations if config else 3
 
@@ -100,12 +99,12 @@ def main():
 
     # Create initial state dictionary
     initial_state = {
-        "ask": "Are social networks good? Let's try to understand the benefits.",
+        "ask": "Are social networks good? Let's try to understand the benefits. Let's try being concise.",
         "node_instruction": None,
         "analysis_output": None,
         "critic_output": None,
         "configuration": Configuration(max_iterations=3),
-        "current_iterations": 0
+        "current_iterations": 1
     }
 
     # Print the question at the beginning
@@ -117,9 +116,18 @@ def main():
 
     print("===END Interaction ===")
 
-    # Call destructors
-    del gemini_agent
-    del claude_agent
+    # Safe cleanup - only delete if variables exist
+    try:
+        if 'gemini_agent' in globals():
+            del gemini_agent
+    except:
+        pass
+
+    try:
+        if 'claude_agent' in globals():
+            del claude_agent
+    except:
+        pass
 
 if __name__ == "__main__":
     main()

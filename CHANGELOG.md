@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [788f15c] - 2025-09-20
+
+### Changed
+- **Agent Initialization**: Removed explicit tools parameter from agent constructors - agents now use default tool sets (ALL_TOOLS) automatically
+- **Iteration Counter Logic**: Fixed iteration counter to start at 1 instead of 0 for proper display formatting and moved increment to after critic output for correct timing
+- **State Display Formatting**: Improved `StatePrinter` formatting by showing iteration progress before section titles for cleaner, more readable output
+- **Resource Cleanup**: Enhanced cleanup in `main.py` with exception handling to prevent errors during agent destruction
+- **Example Question**: Updated demo question to be more concise and focused
+
+### Fixed
+- **Display Consistency**: Iteration counter now properly reflects 1-based counting throughout the workflow
+- **Safe Resource Management**: Added exception handling during agent cleanup to prevent potential errors
+
 ## [8d2c933] - 2025-09-15
 
 ### Added

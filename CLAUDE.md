@@ -33,7 +33,7 @@ The project uses LangGraph's StateGraph pattern with a multi-node critique workf
 ### Tool Integration
 Tools are implemented using LangChain's `@tool` decorator and bound to the LLM using the standard LangChain approach. The architecture handles:
 - **`AiAgent`** base class: Contains generic tool execution logic in the `_process_message_internal` method with performance timing wrapper in `process_message`
-- **Tool binding**: LLM instances are bound to tools using `bind_tools()` method in the base class constructor
+- **Default Tool Binding**: Agent constructors now use default tool sets (ALL_TOOLS) automatically, removing the need to pass tools explicitly during initialization
 - **Tool execution**: Automatic tool call detection and execution via `tool_calls` attribute
 - **Tool response integration**: Tool results are added as `ToolMessage` instances with proper `tool_call_id`
 - **Message-based processing**: Single BaseMessage input/output for better modularity and testability
@@ -107,17 +107,17 @@ The `State` TypedDict contains structured fields for workflow coordination:
 - **`analysis_output`**: Gemini's analysis result from the analysis node
 - **`critic_output`**: Claude's critique response with structured feedback (raw_response format)
 - **`configuration`**: Immutable `Configuration` object containing workflow settings (max_iterations, etc.)
-- **`current_iterations`**: Counter tracking critique iterations to prevent infinite loops
-- **`StatePrinter`**: Utility class with targeted printing methods (`print_ask_only()`, `print_analysis_only()`, `print_critic_only()`) that show node-specific outputs with iteration progress (X/Y format)
+- **`current_iterations`**: Counter tracking critique iterations starting from 1 for proper display formatting
+- **`StatePrinter`**: Utility class with targeted printing methods (`print_ask_only()`, `print_analysis_only()`, `print_critic_only()`) that show iteration progress before section titles for improved readability
 
 ### Workflow Execution
 The critique workflow follows this pattern:
 1. **Initial Analysis**: Gemini processes the user's `ask` and generates `analysis_output`
-2. **Critique Phase**: Claude reviews the analysis and provides `critic_output`, incrementing `current_iterations`
-3. **Iteration Check**: `should_continue_analysis()` validates `current_iterations <= max_iterations`
+2. **Critique Phase**: Claude reviews the analysis and provides `critic_output`, with iteration counter incremented after critique completion for proper timing
+3. **Iteration Check**: `should_continue_analysis()` validates `current_iterations <= max_iterations` with proper 1-based counting
 4. **Conditional Routing**: If critical/major issues found AND under iteration limit, route back to analysis with critique context
 5. **Iterative Refinement**: Continue until satisfactory analysis achieved OR maximum iterations reached
-6. **State Visualization**: `StatePrinter` uses targeted printing methods - `print_ask_only()` at start, `print_analysis_only()` after Gemini node, `print_critic_only()` after Claude node, each with iteration progress tracking
+6. **State Visualization**: `StatePrinter` displays iteration progress before section titles for cleaner formatting - `print_ask_only()` at start, `print_analysis_only()` after Gemini node, `print_critic_only()` after Claude node
 
 ### Claude MCP Agent Enhancements
 The `ClaudeMcpAgent` includes several performance and reliability improvements:
@@ -140,5 +140,6 @@ The architecture includes built-in performance monitoring and resource managemen
 - **Processing Time Measurement**: All agent processing includes automatic timing measurement logged with agent class name
 - **MCP Session Optimization**: `ClaudeMcpAgent` caches sessions and tools during initialization to minimize connection overhead
 - **Resource Cleanup**: Proper cleanup methods and destructors ensure MCP connections are properly closed
-- **Memory Management**: Explicit cleanup calls in `main.py` ensure resources are released when agents are no longer needed
+- **Safe Resource Management**: Enhanced cleanup in `main.py` with exception handling to prevent errors during agent destruction
+- **Memory Management**: Explicit cleanup calls ensure resources are released when agents are no longer needed
 - **Performance Visibility**: Processing times are displayed in format: `⏱️ {AgentName} processing time: {time}s`

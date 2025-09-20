@@ -34,7 +34,7 @@ python main.py
 
 ## What You'll See
 
-The demo analyzes the question *"Are social networks good?"* through a collaborative AI workflow:
+The demo analyzes the question *"Are social networks good? Let's try to understand the benefits. Let's try being concise."* through a collaborative AI workflow:
 
 1. **Gemini** performs initial analysis
 2. **Claude** critiques the analysis for quality issues
